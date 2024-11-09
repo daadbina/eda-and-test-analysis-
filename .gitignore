@@ -1,0 +1,9 @@
+venv
+venv/
+data
+data/
+output/summary_report.md
+data/DA Task.pdf
+dummy_db_path.db
+database.db
+app.log
