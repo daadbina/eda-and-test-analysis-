@@ -11,3 +11,4 @@ tests\__pycache__
 services\__pycache__
 models\__pycache__
 controllers\__pycache__
+output\eda_test_charts.jpg

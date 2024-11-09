@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from services.test_analysis_service import TestAnalysisService
+import sqlite3
 
 class TestTestAnalysisService(unittest.TestCase):
 
