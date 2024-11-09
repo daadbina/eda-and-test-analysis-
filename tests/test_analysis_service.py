@@ -1,69 +1,154 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import sqlite3
-from services.test_analysis_service import TestAnalysisService  # Assuming the service is located here
-from controllers.sql_loader import load_sql_queries
+from services.test_analysis_service import TestAnalysisService
 
-class TestAnalysisServiceTestCase(unittest.TestCase):
-    @patch('services.test_analysis_service.sqlite3.connect')  # Mocking the database connection
-    @patch('controllers.sql_loader.load_sql_queries')  # Mocking the SQL query loading
-    def setUp(self, mock_load_sql_queries, mock_connect):
-        # Mocking SQL query loading
-        mock_load_sql_queries.return_value = {
-            'avg_purchase_by_ui_and_desc': 'SELECT * FROM dummy_table WHERE condition;',
-            'avg_purchase_by_product_ui_desc': 'SELECT * FROM dummy_table WHERE product_condition;'
-        }
+class TestTestAnalysisService(unittest.TestCase):
 
-        # Mocking database connection
-        self.mock_connection = MagicMock()
-        self.mock_cursor = MagicMock()
-        self.mock_connection.cursor.return_value = self.mock_cursor
-        mock_connect.return_value = self.mock_connection
+    def setUp(self):
+        # Initialize TestAnalysisService instance
+        self.service = TestAnalysisService()
 
-        # Creating an instance of the service
-        self.db_path = 'dummy_db_path.db'
-        self.service = TestAnalysisService(self.db_path)
-
-    def test_execute_query(self):
-        # Mocking query result
-        self.mock_cursor.fetchall.return_value = [(1, 'UI Change', 'Desc Change', 100)]
-
-        result = self.service.execute_query('avg_purchase_by_ui_and_desc')
+    @patch('services.test_analysis_service.sqlite3.connect')
+    @patch('services.test_analysis_service.load_sql_queries')
+    def test_execute_query_success(self, mock_load_sql_queries, mock_connect):
+        # Mocking the query result
+        mock_queries = {'avg_purchase_by_ui_and_desc': 'SELECT * FROM ui_desc_changes'}
+        mock_load_sql_queries.return_value = mock_queries
+        mock_connection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_connection
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchall.return_value = [(1, 'UI Change 1', 'Description 1', 10)]
         
-        # Checking if execute_query returns the correct result
-        self.assertEqual(result, [(1, 'UI Change', 'Desc Change', 100)])
-        self.mock_cursor.execute.assert_called_once_with('SELECT * FROM dummy_table WHERE condition;')
+        # Call the method
+        result = self.service.execute_query('avg_purchase_by_ui_and_desc')
 
-    @patch('builtins.print')  # Mocking print outputs
-    def test_analyze_ui_and_desc_changes(self, mock_print):
-        # Mocking output for analyze_ui_and_desc_changes method
-        self.mock_cursor.fetchall.return_value = [(1, 'UI Change', 'Desc Change', 100)]
+        # Assertions
+        mock_connect.assert_called_once_with(self.service.db_path)
+        mock_cursor.execute.assert_called_once_with('SELECT * FROM ui_desc_changes')
+        mock_cursor.fetchall.assert_called_once()
+        mock_cursor.close.assert_called_once()
+        mock_connection.close.assert_called_once()
+        self.assertEqual(result, [(1, 'UI Change 1', 'Description 1', 10)])  # Verify the result
 
-        self.service.analyze_ui_and_desc_changes()
+    @patch('services.test_analysis_service.sqlite3.connect')
+    @patch('services.test_analysis_service.load_sql_queries')
+    def test_execute_query_empty_result(self, mock_load_sql_queries, mock_connect):
+        # Mock empty result from query
+        mock_queries = {'avg_purchase_by_ui_and_desc': 'SELECT * FROM ui_desc_changes'}
+        mock_load_sql_queries.return_value = mock_queries
+        mock_connection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_connection
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchall.return_value = []
 
-        # Checking if the correct output is printed
-        mock_print.assert_called_with("\nAverage Purchase Amount by UI and Description Change:")
-        mock_print.assert_any_call("UI Change: UI Change, Description Change: Desc Change, Average Purchase: 100")
+        # Call the method
+        result = self.service.execute_query('avg_purchase_by_ui_and_desc')
 
-    @patch('builtins.print')  # Mocking print outputs
-    def test_analyze_product_ui_desc_changes(self, mock_print):
-        # Mocking output for analyze_product_ui_desc_changes method
-        self.mock_cursor.fetchall.return_value = [(1, 'Product 1', 'UI Change', 'Desc Change', 200)]
+        # Assertions
+        self.assertEqual(result, [])  # Verify that the result is empty
+        mock_cursor.fetchall.assert_called_once()
 
-        self.service.analyze_product_ui_desc_changes()
+    @patch('services.test_analysis_service.sqlite3.connect')
+    @patch('services.test_analysis_service.load_sql_queries')
+    def test_execute_query_error(self, mock_load_sql_queries, mock_connect):
+        # Simulate an error in database execution
+        mock_queries = {'avg_purchase_by_ui_and_desc': 'SELECT * FROM ui_desc_changes'}
+        mock_load_sql_queries.return_value = mock_queries
+        mock_connect.return_value = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value.cursor.return_value = mock_cursor
+        mock_cursor.execute.side_effect = sqlite3.DatabaseError("Database error")
 
-        # Checking if the correct output is printed
-        mock_print.assert_called_with("\nAverage Purchase Amount by Product, UI, and Description Change:")
-        mock_print.assert_any_call("Product: Product 1, UI Change: UI Change, Description Change: Desc Change, Average Purchase: 200")
+        # Call the method and handle the error
+        with self.assertRaises(sqlite3.DatabaseError):
+            self.service.execute_query('avg_purchase_by_ui_and_desc')
 
-    def test_generate_report(self):
-        # Testing the generate_report method, which includes both analyses
-        with patch('builtins.print') as mock_print:
-            self.service.generate_report()
+        mock_cursor.execute.assert_called_once_with('SELECT * FROM ui_desc_changes')
 
-            # Checking that both analysis methods were called
-            mock_print.assert_any_call("\nAverage Purchase Amount by UI and Description Change:")
-            mock_print.assert_any_call("\nAverage Purchase Amount by Product, UI, and Description Change:")
+    @patch('services.test_analysis_service.logging.getLogger')
+    @patch('services.test_analysis_service.sqlite3.connect')
+    @patch('services.test_analysis_service.load_sql_queries')
+    def test_analyze_ui_and_desc_changes_success(self, mock_load_sql_queries, mock_connect, mock_logger):
+        # Mocking query result and logger
+        mock_queries = {'avg_purchase_by_ui_and_desc': 'SELECT * FROM ui_desc_changes'}
+        mock_load_sql_queries.return_value = mock_queries
+        mock_connection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_connection
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchall.return_value = [(1, 'UI Change 1', 'Description 1', 10)]
+        
+        analysis_result = self.service.analyze_ui_and_desc_changes()
+
+        # Check if the analysis result is structured correctly
+        self.assertEqual(analysis_result, [{"UI Change": 1, "Description Change": 'UI Change 1', "Average Purchase": 10}])
+
+        # Check logger info
+        mock_logger.info.assert_called_once_with("UI and Description changes analysis generated successfully.")
+
+    @patch('services.test_analysis_service.logging.getLogger')
+    @patch('services.test_analysis_service.sqlite3.connect')
+    @patch('services.test_analysis_service.load_sql_queries')
+    def test_analyze_ui_and_desc_changes_empty_result(self, mock_load_sql_queries, mock_connect, mock_logger):
+        # Mocking empty result for analysis
+        mock_queries = {'avg_purchase_by_ui_and_desc': 'SELECT * FROM ui_desc_changes'}
+        mock_load_sql_queries.return_value = mock_queries
+        mock_connection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_connection
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchall.return_value = []
+
+        analysis_result = self.service.analyze_ui_and_desc_changes()
+
+        # Check if empty analysis is returned
+        self.assertEqual(analysis_result, [])
+
+        # Check warning in the logger
+        mock_logger.warning.assert_called_once_with("No data available for UI and Description changes analysis.")
+
+    @patch('services.test_analysis_service.logging.getLogger')
+    @patch('services.test_analysis_service.sqlite3.connect')
+    @patch('services.test_analysis_service.load_sql_queries')
+    def test_analyze_ui_and_desc_changes_error(self, mock_load_sql_queries, mock_connect, mock_logger):
+        # Mocking error scenario in query execution
+        mock_queries = {'avg_purchase_by_ui_and_desc': 'SELECT * FROM ui_desc_changes'}
+        mock_load_sql_queries.return_value = mock_queries
+        mock_connection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_connection
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.execute.side_effect = Exception("Database error")
+
+        analysis_result = self.service.analyze_ui_and_desc_changes()
+
+        # Check if empty analysis is returned due to error
+        self.assertEqual(analysis_result, [])
+
+        # Check that the error was logged
+        mock_logger.error.assert_called_once_with("Error in analyze_ui_and_desc_changes: Database error")
+
+    @patch('services.test_analysis_service.logging.getLogger')
+    @patch('services.test_analysis_service.sqlite3.connect')
+    @patch('services.test_analysis_service.load_sql_queries')
+    def test_generate_report(self, mock_load_sql_queries, mock_connect, mock_logger):
+        # Mocking queries and results
+        mock_queries = {'avg_purchase_by_ui_and_desc': 'SELECT * FROM ui_desc_changes', 'avg_purchase_by_product_ui_desc': 'SELECT * FROM product_ui_desc_changes'}
+        mock_load_sql_queries.return_value = mock_queries
+        mock_connection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_connection
+        mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchall.return_value = [(1, 'UI Change 1', 'Description 1', 10)]
+
+        report = self.service.generate_report()
+
+        # Check the report structure
+        self.assertIn("ui_desc_changes", report)
+        self.assertIn("product_ui_desc_changes", report)
+        self.assertIsInstance(report["ui_desc_changes"], list)
 
 if __name__ == '__main__':
     unittest.main()

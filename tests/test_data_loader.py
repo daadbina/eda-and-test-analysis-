@@ -1,59 +1,90 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import pandas as pd
 from services.data_loader import DataLoader
+import pandas as pd
+import logging
 
 class TestDataLoader(unittest.TestCase):
-    
-    @patch("pandas.read_csv")  # Mocking pd.read_csv
-    def test_load_data_success(self, mock_read_csv):
-        # Mocking the loaded data
-        mock_invoices = MagicMock(spec=pd.DataFrame)
-        mock_products = MagicMock(spec=pd.DataFrame)
-        mock_test = MagicMock(spec=pd.DataFrame)
+
+    def setUp(self):
+        # Initialize DataLoader instance
+        self.data_loader = DataLoader()
+
+    @patch('services.data_loader.pd.read_csv')
+    @patch('services.data_loader.logging.getLogger')
+    def test_load_data_success(self, mock_logger, mock_read_csv):
+        # Mocking successful CSV file loading
+        mock_invoices_data = MagicMock(spec=pd.DataFrame)
+        mock_products_data = MagicMock(spec=pd.DataFrame)
+        mock_test_data = MagicMock(spec=pd.DataFrame)
         
-        # Define what the mock will return
-        mock_read_csv.side_effect = [mock_invoices, mock_products, mock_test]
+        mock_read_csv.side_effect = [mock_invoices_data, mock_products_data, mock_test_data]
+        
+        # Call the load_data method
+        loaded_data = self.data_loader.load_data()
 
-        # Creating DataLoader instance
-        data_loader = DataLoader()
+        # Assertions
+        self.assertEqual(loaded_data["invoices"], mock_invoices_data)
+        self.assertEqual(loaded_data["products"], mock_products_data)
+        self.assertEqual(loaded_data["test"], mock_test_data)
+        
+        # Check logger info calls
+        mock_logger.info.assert_any_call("Starting to load data from CSV files.")
+        mock_logger.info.assert_any_call(f"Invoices data loaded successfully from {self.data_loader.invoices_file}.")
+        mock_logger.info.assert_any_call(f"Products data loaded successfully from {self.data_loader.products_file}.")
+        mock_logger.info.assert_any_call(f"Test data loaded successfully from {self.data_loader.test_file}.")
 
-        # Calling the load_data method
-        result = data_loader.load_data()
-
-        # Ensure the correct files are being read
-        mock_read_csv.assert_any_call(data_loader.invoices_file)
-        mock_read_csv.assert_any_call(data_loader.products_file)
-        mock_read_csv.assert_any_call(data_loader.test_file)
-
-        # Ensure the method returns the correct results
-        self.assertEqual(result["invoices"], mock_invoices)
-        self.assertEqual(result["products"], mock_products)
-        self.assertEqual(result["test"], mock_test)
-    
-    @patch("pandas.read_csv")
-    def test_load_data_file_not_found(self, mock_read_csv):
-        # Mocking a FileNotFoundError
-        mock_read_csv.side_effect = FileNotFoundError("File not found")
-
-        # Creating DataLoader instance
-        data_loader = DataLoader()
-
-        # Ensuring the exception is raised when FileNotFoundError occurs
+    @patch('services.data_loader.pd.read_csv')
+    @patch('services.data_loader.logging.getLogger')
+    def test_load_data_file_not_found(self, mock_logger, mock_read_csv):
+        # Simulate FileNotFoundError when reading CSV
+        mock_read_csv.side_effect = FileNotFoundError("File not found: invoices.csv")
+        
         with self.assertRaises(FileNotFoundError):
-            data_loader.load_data()
+            self.data_loader.load_data()
+        
+        # Check that the error was logged
+        mock_logger.error.assert_called_once_with("File not found: invoices.csv. Please check the file path.")
 
-    @patch("pandas.read_csv")
-    def test_load_data_empty_file(self, mock_read_csv):
-        # Mocking an EmptyDataError
-        mock_read_csv.side_effect = pd.errors.EmptyDataError("File is empty")
-
-        # Creating DataLoader instance
-        data_loader = DataLoader()
-
-        # Ensuring the exception is raised when EmptyDataError occurs
+    @patch('services.data_loader.pd.read_csv')
+    @patch('services.data_loader.logging.getLogger')
+    def test_load_data_empty_file(self, mock_logger, mock_read_csv):
+        # Simulate EmptyDataError when reading a CSV file
+        mock_read_csv.side_effect = pd.errors.EmptyDataError("No columns to parse from file")
+        
         with self.assertRaises(pd.errors.EmptyDataError):
-            data_loader.load_data()
+            self.data_loader.load_data()
+        
+        # Check that the error was logged
+        mock_logger.error.assert_called_once_with("File is empty: No columns to parse from file. Please check the contents of the file.")
 
-if __name__ == "__main__":
+    @patch('services.data_loader.pd.read_csv')
+    @patch('services.data_loader.logging.getLogger')
+    def test_load_data_unexpected_error(self, mock_logger, mock_read_csv):
+        # Simulate a general exception during CSV reading
+        mock_read_csv.side_effect = Exception("An unexpected error occurred")
+        
+        with self.assertRaises(Exception):
+            self.data_loader.load_data()
+        
+        # Check that the error was logged
+        mock_logger.error.assert_called_once_with("An unexpected error occurred while loading data: An unexpected error occurred")
+
+    @patch('services.data_loader.pd.read_csv')
+    @patch('services.data_loader.logging.getLogger')
+    def test_load_data_logger_info_called(self, mock_logger, mock_read_csv):
+        # Mock successful file loading
+        mock_invoices_data = MagicMock(spec=pd.DataFrame)
+        mock_products_data = MagicMock(spec=pd.DataFrame)
+        mock_test_data = MagicMock(spec=pd.DataFrame)
+        
+        mock_read_csv.side_effect = [mock_invoices_data, mock_products_data, mock_test_data]
+        
+        # Call the load_data method
+        self.data_loader.load_data()
+
+        # Check that the logger.info is called the correct number of times
+        self.assertEqual(mock_logger.info.call_count, 4)
+
+if __name__ == '__main__':
     unittest.main()
