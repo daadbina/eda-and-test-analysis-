@@ -199,7 +199,6 @@ class EDAService:
             else:
                 z_scores = {}
 
-            print(group_sales)
             # Calculate percentage changes between product sales
             percentage_changes = {}
             if len(group_sales) >= 2:

@@ -1,7 +1,6 @@
 # report_generator.py
 from services.eda_service import EDAService
 from services.test_analysis_service import TestAnalysisService
-from config.settings import INVOICES_FILE, PRODUCTS_FILE, TEST_FILE
 from services.t_test import TTestService
 import logging
 
