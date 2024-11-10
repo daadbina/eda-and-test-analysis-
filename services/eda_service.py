@@ -2,7 +2,7 @@ import sqlite3
 from controllers.sql_loader import load_sql_queries
 from config.settings import DB_PATH
 import logging
-import numpy as np  # برای محاسبات آماری
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
