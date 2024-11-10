@@ -117,16 +117,16 @@ class PlotGenerator:
         except Exception as e:
             self.logger.error(f"Error plotting sales distribution: {e}")
 
-    def generate_group_sales_summary(self, data):
-        """Group sales by UI and Description changes to find mean, sum, and count"""
-        try:
-            group_sales = data.groupby(['ui_change', 'desc_change']).agg({
-                'amount': ['mean', 'sum', 'count']
-            }).reset_index()
-            return group_sales
-        except Exception as e:
-            self.logger.error(f"Error generating group sales summary: {e}")
-            return None
+    # def generate_group_sales_summary(self, data):
+    #     """Group sales by UI and Description changes to find mean, sum, and count"""
+    #     try:
+    #         group_sales = data.groupby(['ui_change', 'desc_change']).agg({
+    #             'amount': ['mean', 'sum', 'count']
+    #         }).reset_index()
+    #         return group_sales
+    #     except Exception as e:
+    #         self.logger.error(f"Error generating group sales summary: {e}")
+    #         return None
 
 
     def generate_monthly_sales_plot(self, file_name):
@@ -161,6 +161,31 @@ class PlotGenerator:
         except Exception as e:
             self.logger.error(f"Error generating monthly sales plot: {e}")
 
+    def plot_sales_by_group(self, sales_data, file_name):
+        """Generate a bar plot for sales by group"""
+        try:
+            # Extract groups and total sales from the query result
+            groups = [entry['Group'] for entry in sales_data]
+            total_sales = [entry['Total Sales'] for entry in sales_data]
+
+            # Create the plot with a specific size
+            plt.figure(figsize=(10, 6))  # Set figure size
+            
+            # Use seaborn to create a bar plot with 'hue' set to 'Group'
+            sns.barplot(x=groups, y=total_sales, hue=groups, palette='viridis', legend=False)
+
+            # Set plot title and labels for axes
+            plt.title("Total Sales by Group", fontsize=16)
+            plt.xlabel("Group", fontsize=14)
+            plt.ylabel("Total Sales", fontsize=14)
+
+            plt.savefig(os.path.join(self.output_dir, file_name))  # Save the plot
+            plt.close()  # Close the plot to avoid memory issues
+
+        except Exception as e:
+            # Handle any exception that may occur during the plot generation
+            print(f"Error generating plot: {e}")
+
     def generate_plots(self):
         """Generate all required plots for EDA"""
         try:
@@ -175,6 +200,15 @@ class PlotGenerator:
             if final_data_df is not None and 'amount' in final_data_df.columns:
                 self.plot_histogram(final_data_df, 'amount', 'Distribution of Sales Amount', 'sales_amount_histogram.png')
 
+            # Plot histograms and box plot for z score
+            if report['z_scores'] is not None :
+                self.plot_histogram(report['z_scores'] , 'z_scores', 'Z-Score histogram', 'z_score_histogram.png')
+                self.plot_boxplot(report['z_scores'], 'z_scores', 'Boxplot of Z-Score', 'z_score_boxplot.png')
+
+            # Plot summery of groups
+            if report['group_sales_summary'] is not None :
+                self.plot_sales_by_group(report['group_sales_summary'], 'group_sale_summery.png')
+
             # Plot boxplots for relevant columns (e.g., 'amount')
             if final_data_df is not None and 'amount' in final_data_df.columns:
                 self.plot_boxplot(final_data_df, 'amount', 'Boxplot of Sales Amount', 'sales_amount_boxplot.png')
@@ -184,8 +218,8 @@ class PlotGenerator:
                 self.plot_scatter(final_data_df, 'ui_change', 'amount', 'Scatter Plot of UI Change vs Sales', 'ui_change_vs_sales_scatter.png')
 
             # Plot heatmap for correlations in the data
-            if final_data_df is not None:
-                self.plot_heatmap(final_data_df, 'Correlation Heatmap of Sales Data', 'sales_data_heatmap.png')
+            # if final_data_df is not None:
+            #     self.plot_heatmap(final_data_df, 'Correlation Heatmap of Sales Data', 'sales_data_heatmap.png')
 
             # Plot average sales amount for each group (UI and Description)
             if final_data_df is not None and 'ui_change' in final_data_df.columns and 'desc_change' in final_data_df.columns:
@@ -196,8 +230,8 @@ class PlotGenerator:
                 self.plot_sales_distribution(final_data_df, 'sales_distribution_by_event.png')
 
             # Generate group sales summary (mean, sum, count)
-            if final_data_df is not None:
-                group_sales = self.generate_group_sales_summary(final_data_df)
+            # if final_data_df is not None:
+            #     group_sales = self.generate_group_sales_summary(final_data_df)
 
             # Plot monthly sales
             self.generate_monthly_sales_plot('monthly_trend.png')  # اضافه کردن نمودار خریدهای ماهانه
