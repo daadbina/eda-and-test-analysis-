@@ -10,3 +10,5 @@ Project contains 4 main section
 
 to use the program you need data folder and install requirements.txt then run main.py
 
+### Improvments
+All dynamic variables should extract to settings file for more clean code
