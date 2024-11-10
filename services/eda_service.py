@@ -3,6 +3,9 @@ from controllers.sql_loader import load_sql_queries
 from config.settings import DB_PATH
 import logging
 import numpy as np  # برای محاسبات آماری
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class EDAService:
     def __init__(self):
@@ -64,6 +67,27 @@ class EDAService:
             error_message = f"Error in product_sales_summary: {e}"
             self.logger.error(error_message)
             return []
+        
+    def product_sales_by_group(self):
+        """Summarize product sales and return as structured data based on user groups"""
+        try:
+            # Execute the query to fetch sales based on user groups (A, B, C, D) and total_sales from invoices
+            result = self.execute_query('product_sales_by_group')  # Ensure this query is added in the SQL queries
+            
+            if result:
+                # Parse the results and return them in the expected format
+                summary = [{"Group": row[0], "Total Sales": row[1]} for row in result if row[0] != 'Unknown']
+                self.logger.info("Product sales summary generated successfully for groups A, B, C, D.")
+                return summary
+            else:
+                self.logger.warning("No data available for product sales summary.")
+                return []
+        except Exception as e:
+            error_message = f"Error in product_sales_by_group: {e}"
+            self.logger.error(error_message)
+            return []
+
+
 
     def event_sales_summary(self):
         """Summarize event sales and return as structured data"""
@@ -108,62 +132,91 @@ class EDAService:
             self.logger.error(f"Error calculating statistics: {e}")
             return {}
 
+    def calculate_z_score(self, sales_data):
+        """Calculate Z-Score for the sales data"""
+        try:
+            # Extract sales values (Total Sales) from the sales_data
+            sales_values = [row['Total Sales'] for row in sales_data]
+
+            # Check if sales_values is not empty
+            if not sales_values:
+                self.logger.error("Sales data is empty. Cannot calculate Z-Score.")
+                return {}
+
+            # Calculate mean and standard deviation
+            mean = np.mean(sales_values)
+            std = np.std(sales_values)
+
+            # Handle case where std is 0 (division by zero)
+            if std == 0:
+                self.logger.warning("Standard deviation is 0. Cannot calculate Z-Score.")
+                return {'z_scores': [None for _ in sales_values]}  # Return None for all values if std is zero
+
+            # Calculate Z-Scores
+            z_scores = [(x - mean) / std for x in sales_values]
+
+            # Return the Z-Scores as a dictionary or list
+            return {'z_scores': z_scores}
+
+        except Exception as e:
+            self.logger.error(f"Error calculating Z-Score: {e}")
+            return {'z_scores': []}
+
     def calculate_percentage_change(self, old_value, new_value):
         """Calculate percentage change between old and new values"""
         try:
+            if old_value == 0 or old_value is None or new_value is None:
+                self.logger.warning(f"Invalid values for percentage change calculation: old_value={old_value}, new_value={new_value}")
+                return None
+            
             percentage_change = ((new_value - old_value) / old_value) * 100
-            return percentage_change
+            return round(percentage_change, 2)  # Round the result to two decimal places for consistency
         except ZeroDivisionError:
             self.logger.error("Division by zero encountered while calculating percentage change.")
             return None
         except Exception as e:
             self.logger.error(f"Unexpected error while calculating percentage change: {e}")
             return None
-
+        
     def generate_report(self):
         """Generate full report as structured data"""
         try:
             # Fetching the sales summaries
             product_sales = self.product_sales_summary()
             event_sales = self.event_sales_summary()
-
+            group_sales = self.product_sales_by_group()
             # Calculating statistics for product sales
             if product_sales:
                 product_statistics = self.calculate_statistics(product_sales)
             else:
                 product_statistics = {}
 
-            # Calculating percentage changes between the different groups of UI and description changes
-            ui_description_sales = self.execute_query('ui_description_sales_summary')  # فرض کنید که این query داده‌های مورد نظر رو میده
-            if ui_description_sales:
-                # Extracting sales values for each group
-                group_A_sales = ui_description_sales[0][2]  # Group A: no, no
-                group_B_sales = ui_description_sales[1][2]  # Group B: no, yes
-                group_C_sales = ui_description_sales[2][2]  # Group C: yes, no
-                group_D_sales = ui_description_sales[3][2]  # Group D: yes, yes
-
-                # Calculate percentage changes
-                percentage_change_B_A = self.calculate_percentage_change(group_A_sales, group_B_sales)
-                percentage_change_C_A = self.calculate_percentage_change(group_A_sales, group_C_sales)
-                percentage_change_D_A = self.calculate_percentage_change(group_A_sales, group_D_sales)
-
-                # Add to the report
-                report = {
-                    "product_sales_summary": product_sales,
-                    "event_sales_summary": event_sales,
-                    "product_sales_statistics": product_statistics,
-                    "percentage_changes": {
-                        "B_A": percentage_change_B_A,
-                        "C_A": percentage_change_C_A,
-                        "D_A": percentage_change_D_A
-                    }
-                }
-                self.logger.info("Full report generated successfully.")
-                return report
+            # Calculating Z-Scores for sales data
+            if product_sales:
+                z_scores = self.calculate_z_score(product_sales)
             else:
-                self.logger.warning("No data available for UI/Description sales summary.")
-                return {}
+                z_scores = {}
+                
+            # Calculate percentage changes between product sales
+            percentage_changes = {}
+            if len(group_sales) >= 2:
+                percentage_changes['B_A'] = self.calculate_percentage_change(group_sales[0]['Total Sales'], group_sales[0]['Total Sales'])
+            if len(group_sales) >= 3:
+                percentage_changes['C_A'] = self.calculate_percentage_change(group_sales[0]['Total Sales'], group_sales[2]['Total Sales'])
+            if len(group_sales) >= 4:
+                percentage_changes['D_A'] = self.calculate_percentage_change(group_sales[0]['Total Sales'], group_sales[3]['Total Sales'])
 
+            # Generating report
+            report = {
+                "product_sales_summary": product_sales,
+                "event_sales_summary": event_sales,
+                "product_sales_statistics": product_statistics,
+                "z_scores": z_scores,
+                "percentage_changes": percentage_changes  # Add percentage changes to the report
+            }
+
+            self.logger.info("Full report generated successfully.")
+            return report
         except Exception as e:
             error_message = f"Unexpected error while generating report: {e}"
             self.logger.error(error_message)
