@@ -60,6 +60,10 @@ class ReportGenerator:
                     f.write(f"- Std Dev: {stats.get('std', 'N/A')}\n")
                     f.write(f"- Min Sales: {stats.get('min', 'N/A')}\n")
                     f.write(f"- Max Sales: {stats.get('max', 'N/A')}\n")
+                    f.write(f"- Z Score mean: {report_data['eda_results']['z_score_mean']}\n")
+                    f.write(f"- Z Score max: {report_data['eda_results']['z_score_max']}\n")
+                    f.write(f"- Z Score min: {report_data['eda_results']['z_score_min']}\n")
+                    f.write(f"- Z Score std dev: {report_data['eda_results']['z_score_std_dev']}\n")
                 else:
                     f.write("No statistics data available.\n")
 

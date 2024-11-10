@@ -75,3 +75,6 @@ GROUP BY group_name;
 -- Query name: monthly_sales_query
 SELECT amount, datepaid
 FROM invoices;
+
+-- Query name: z_score
+SELECT amount FROM invoices WHERE amount IS NOT NULL
