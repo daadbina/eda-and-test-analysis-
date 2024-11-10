@@ -1,6 +1,8 @@
+# report_generator.py
 from services.eda_service import EDAService
 from services.test_analysis_service import TestAnalysisService
 from config.settings import INVOICES_FILE, PRODUCTS_FILE, TEST_FILE
+from services.t_test import TTestService
 import logging
 
 class ReportGenerator:
@@ -8,7 +10,9 @@ class ReportGenerator:
         self.logger = logging.getLogger(__name__)
         try:
             self.eda_service = EDAService()
-            self.test_analysis_service = TestAnalysisService()
+            self.test_analysis_service = TestAnalysisService() 
+            self.t_test_service = TTestService().perform_t_tests_for_all_groups()
+
             self.logger.info("ReportGenerator initialized successfully.")
         except Exception as e:
             self.logger.error(f"Error initializing ReportGenerator: {e}")
@@ -94,6 +98,16 @@ class ReportGenerator:
                         f.write(f"- Product: {row['Product']}, UI Change: {row['UI Change']}, Description Change: {row['Description Change']}, Average Purchase: {row['Average Purchase']}\n")
                 else:
                     f.write("No product, UI, and description changes data available.\n")
+
+                # T-Test Results
+                f.write("\n## T-Test Results for All Group Comparisons\n")
+                if self.t_test_service:
+                    for groups, result in self.t_test_service.items():
+                        f.write(f"### T-test between groups {groups}:\n")
+                        f.write(f"- T-statistic: {result['t_statistic']}\n")
+                        f.write(f"- P-value: {result['p_value']}\n\n")
+                else:
+                    f.write("T-tests could not be performed.\n")
 
             self.logger.info(f"Report saved successfully to {file_path}")
 
