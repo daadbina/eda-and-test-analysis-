@@ -132,35 +132,37 @@ class EDAService:
             self.logger.error(f"Error calculating statistics: {e}")
             return {}
 
-    def calculate_z_score(self, sales_data):
-        """Calculate Z-Score for the sales data"""
+    def calculate_z_score(self):
+        """Calculate Z-Score for the sales data from the invoices table"""
         try:
-            # Extract sales values (Total Sales) from the sales_data
-            sales_values = [row['Total Sales'] for row in sales_data]
+            # 1. Fetch sales data (amount) from the 'invoices' table
+            sales_data = self.execute_query('z_score')
 
-            # Check if sales_values is not empty
-            if not sales_values:
-                self.logger.error("Sales data is empty. Cannot calculate Z-Score.")
-                return {}
+            if not sales_data:
+                self.logger.error("No sales data found in the 'invoices' table.")
+                return {'z_scores': []}
 
-            # Calculate mean and standard deviation
-            mean = np.mean(sales_values)
-            std = np.std(sales_values)
+            # 2. Convert the result into a pandas DataFrame for easier manipulation
+            sales_df = pd.DataFrame(sales_data, columns=['amount'])
 
-            # Handle case where std is 0 (division by zero)
+            # 3. Calculate Z-Score for the 'amount' column
+            mean = sales_df['amount'].mean()
+            std = sales_df['amount'].std()
+
+            # 4. Handle case where std is 0 (division by zero)
             if std == 0:
                 self.logger.warning("Standard deviation is 0. Cannot calculate Z-Score.")
-                return {'z_scores': [None for _ in sales_values]}  # Return None for all values if std is zero
-
-            # Calculate Z-Scores
-            z_scores = [(x - mean) / std for x in sales_values]
-
-            # Return the Z-Scores as a dictionary or list
-            return {'z_scores': z_scores}
+                sales_df['z_score'] = None
+            else:
+                sales_df['z_score'] = (sales_df['amount'] - mean) / std
+            z_scores_list = sales_df['z_score'].tolist()
+            # 5. Return the results (z_scores) as a dictionary or list
+            return {'z_scores': z_scores_list, 'mean':np.mean(z_scores_list), 'std_dev': np.std(z_scores_list), 'min': np.min(z_scores_list), 'max': np.max(z_scores_list) }
 
         except Exception as e:
             self.logger.error(f"Error calculating Z-Score: {e}")
             return {'z_scores': []}
+
 
     def calculate_percentage_change(self, old_value, new_value):
         """Calculate percentage change between old and new values"""
@@ -193,10 +195,11 @@ class EDAService:
 
             # Calculating Z-Scores for sales data
             if product_sales:
-                z_scores = self.calculate_z_score(product_sales)
+                z_scores = self.calculate_z_score()
             else:
                 z_scores = {}
-                
+
+            print(group_sales)
             # Calculate percentage changes between product sales
             percentage_changes = {}
             if len(group_sales) >= 2:
@@ -212,11 +215,18 @@ class EDAService:
                 "event_sales_summary": event_sales,
                 "product_sales_statistics": product_statistics,
                 "z_scores": z_scores,
-                "percentage_changes": percentage_changes  # Add percentage changes to the report
+                "z_score_mean": z_scores['mean'],
+                "z_score_std_dev" : z_scores['std_dev'],
+                "z_score_max" :z_scores['max'] ,
+                "z_score_min" : z_scores['min'],
+                "percentage_changes": percentage_changes,
+                "group_sales_summary":group_sales
+
             }
 
             self.logger.info("Full report generated successfully.")
             return report
+        
         except Exception as e:
             error_message = f"Unexpected error while generating report: {e}"
             self.logger.error(error_message)
