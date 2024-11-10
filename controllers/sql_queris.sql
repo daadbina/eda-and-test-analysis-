@@ -78,3 +78,32 @@ FROM invoices;
 
 -- Query name: z_score
 SELECT amount FROM invoices WHERE amount IS NOT NULL
+
+
+-- Query name: group_a_sales
+SELECT amount
+FROM invoices
+JOIN test_analysis ON invoices.userid = test_analysis.userid
+WHERE COALESCE(test_analysis.ui_change, 'no') = 'no'
+  AND COALESCE(test_analysis.desc_change, 'no') = 'no';
+
+-- Query name: group_b_sales
+SELECT amount
+FROM invoices
+JOIN test_analysis ON invoices.userid = test_analysis.userid
+WHERE COALESCE(test_analysis.ui_change, 'yes') = 'yes'
+  AND COALESCE(test_analysis.desc_change, 'no') = 'no';
+
+-- Query name: group_c_sales
+SELECT amount
+FROM invoices
+JOIN test_analysis ON invoices.userid = test_analysis.userid
+WHERE COALESCE(test_analysis.ui_change, 'no') = 'no'
+  AND COALESCE(test_analysis.desc_change, 'yes') = 'yes';
+
+-- Query name: group_d_sales
+SELECT amount
+FROM invoices
+JOIN test_analysis ON invoices.userid = test_analysis.userid
+WHERE COALESCE(test_analysis.ui_change, 'yes') = 'yes'
+  AND COALESCE(test_analysis.desc_change, 'yes') = 'yes';

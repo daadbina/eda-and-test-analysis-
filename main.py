@@ -7,7 +7,9 @@ from config.settings import DB_PATH, INVOICES_CSV_PATH, PRODUCTS_CSV_PATH, TEST_
 from logger import setup_logger
 import sqlite3
 from controllers.plot_generator import PlotGenerator
-from controllers.pdf_generator import PDFGenerator
+# from controllers.pdf_generator import PDFGenerator
+
+
 def main():
     logger = setup_logger() 
     logger = logging.getLogger(__name__)
@@ -55,8 +57,10 @@ def main():
             plot_generator = PlotGenerator()
             plot_generator.generate_plots()
 
+
             # pdff_generator = PDFGenerator()
             # pdff_generator.generate_reports()
+
         except Exception as e:
             logger.error(f"Error generating report: {str(e)}")
 
