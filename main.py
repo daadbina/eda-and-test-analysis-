@@ -6,6 +6,7 @@ from models.database import Database
 from config.settings import DB_PATH, INVOICES_CSV_PATH, PRODUCTS_CSV_PATH, TEST_CSV_PATH
 from logger import setup_logger
 import sqlite3
+from controllers.plot_generator import PlotGenerator
 
 def main():
     logger = setup_logger() 
@@ -50,6 +51,9 @@ def main():
             report_generator = ReportGenerator()
             report_data = report_generator.generate_summary()  # Run analyses and get report data
             report_generator.save_report(report_data)  # Save the report to file
+                        
+            plot_generator = PlotGenerator()
+            plot_generator.generate_plots()
         except Exception as e:
             logger.error(f"Error generating report: {str(e)}")
 
