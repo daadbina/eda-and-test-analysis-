@@ -132,22 +132,22 @@ class PlotGenerator:
     def generate_monthly_sales_plot(self, file_name):
         """Generate monthly sales plot"""
         try:
-            # اجرای کوئری برای گرفتن داده‌های مورد نیاز
+            # Get data
             result = self.eda_service.execute_query('monthly_sales_query')
             if result:
-                # تبدیل داده‌های کوئری به یک DataFrame
+                # query to df                
                 invoices_df = pd.DataFrame(result, columns=['amount', 'datepaid'])
 
-                # تبدیل تاریخ‌ها به فرمت صحیح (DateTime)
+                # Change date format
                 invoices_df['datepaid'] = pd.to_datetime(invoices_df['datepaid'], format='%m/%d/%Y')
 
-                # اضافه کردن ستون ماه-سال برای گروه‌بندی
+                # Add month_year_column
                 invoices_df['month_year'] = invoices_df['datepaid'].dt.to_period('M')
 
-                # شمارش تعداد خریدهای هر ماه
+                # Number of sales
                 monthly_purchases = invoices_df.groupby('month_year').size()
 
-                # رسم نمودار
+                # Save chart
                 plt.figure(figsize=(12, 6))
                 monthly_purchases.plot(kind='line', marker='o')
                 plt.title("Monthly Purchases Over Time")

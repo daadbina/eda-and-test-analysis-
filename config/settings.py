@@ -37,4 +37,6 @@ INVOICES_CSV_PATH = 'data/tbl_invoices.csv'
 PRODUCTS_CSV_PATH = 'data/tbl_products.csv'
 TEST_CSV_PATH = 'data/tbl_test.csv'
 
-
+# pdf generator settings
+PDF_OUTPUT_PATH = 'output\\summary_report.pdf'
+REPORT_MARKDOWN_PATH = "output\\summary_report_markdown.md"

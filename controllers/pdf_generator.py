@@ -2,6 +2,7 @@ import os
 import logging
 from PIL import Image
 from fpdf import FPDF
+from config.settings import PDF_OUTPUT_PATH, REPORT_MARKDOWN_PATH
 
 class PDFGenerator:
     def __init__(self):
@@ -22,8 +23,8 @@ class PDFGenerator:
             "Description for the seventh image.",
             "Description for the eighth image."
         ]
-        self.pdf_output_path = "output\\summary_report.pdf"
-        self.markdown_output_path = "output\\summary_report_markdown.md"
+        self.pdf_output_path = PDF_OUTPUT_PATH
+        self.markdown_output_path = REPORT_MARKDOWN_PATH
         self.logger = logging.getLogger(__name__)
 
         # Setup logger configuration
